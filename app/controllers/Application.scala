@@ -8,7 +8,7 @@ import scala.concurrent.Future
 // Reactive Mongo imports
 import reactivemongo.api._
 
-// Reactive Mongo plugin, including the JSON-specialized collection
+// Reactive Mongo plugin, including the JSON-specialized persons
 import play.modules.reactivemongo.MongoController
 import play.modules.reactivemongo.json.collection.JSONCollection
 
@@ -30,13 +30,15 @@ object Application extends Controller with MongoController {
   /*
    * Get a JSONCollection (a Collection implementation that is designed to work
    * with JsObject, Reads and Writes.)
-   * Note that the `collection` is not a `val`, but a `def`. We do _not_ store
-   * the collection reference to avoid potential problems in development with
+   * Note that the `persons` is not a `val`, but a `def`. We do _not_ store
+   * the persons reference to avoid potential problems in development with
    * Play hot-reloading.
    */
-  def collection: JSONCollection = db.collection[JSONCollection]("persons")
+  def persons: JSONCollection = db.collection[JSONCollection]("persons")
 
-  def index = Action { Ok("works") }
+  def index = Action {
+    Ok(views.html.index("It works."))
+  }
 
   def create(name: String, age: Int) = Action {
     Async {
@@ -45,7 +47,7 @@ object Application extends Controller with MongoController {
         "age" -> age,
         "created" -> new java.util.Date().getTime())
 
-      collection.insert(json).map(lastError =>
+      persons.insert(json).map(lastError =>
         Ok("Mongo LastError: %s".format(lastError)))
     }
   }
@@ -60,7 +62,7 @@ object Application extends Controller with MongoController {
        * (insert() takes a JsObject as parameter, or anything that can be
        * turned into a JsObject using a Writes.)
        */
-      collection.insert(request.body).map(lastError =>
+      persons.insert(request.body).map(lastError =>
         Ok("Mongo LastError:%s".format(lastError)))
     }
   }
@@ -68,7 +70,7 @@ object Application extends Controller with MongoController {
   def findByName(name: String) = Action {
     Async {
       // let's do our query
-      val cursor: Cursor[JsObject] = collection.
+      val cursor: Cursor[JsObject] = persons.
         // find all people with name `name`
         find(Json.obj("name" -> name)).
         // sort them by creation date
@@ -102,7 +104,7 @@ object Application extends Controller with MongoController {
     val user = User(29, "John", "Smith", List(
       Feed("Slashdot news", "http://slashdot.org/slashdot.rdf")))
     // insert the user
-    val futureResult = collection.insert(user)
+    val futureResult = persons.insert(user)
     Async {
       // when the insert is performed, send a OK 200 result
       futureResult.map(_ => Ok)
@@ -112,7 +114,7 @@ object Application extends Controller with MongoController {
   def findByNameCC(name: String) = Action {
     // let's do our query
     Async {
-      val cursor: Cursor[User] = collection.
+      val cursor: Cursor[User] = persons.
         // find all people with name `name`
         find(Json.obj("name" -> name)).
         // sort them by creation date
